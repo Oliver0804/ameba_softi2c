@@ -1,74 +1,47 @@
 #include <Arduino.h>
-
+#define ICM42605_ADDR 0x68
+#define DELAY_TIME 100
 #define SDA_PIN 9
 #define SCL_PIN 10
 
-
-void i2c_start() {
-  digitalWrite(SDA_PIN, HIGH);
-  digitalWrite(SCL_PIN, HIGH);
-  digitalWrite(SDA_PIN, LOW);
-  delayMicroseconds(10);
-  digitalWrite(SCL_PIN, LOW);
-}
-
-void i2c_stop() {
-  digitalWrite(SDA_PIN, LOW);
-  digitalWrite(SCL_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(SDA_PIN, HIGH);
-}
-
-bool i2c_write_bit(bool bit) {
-  digitalWrite(SDA_PIN, bit);
-  delayMicroseconds(10);
-  digitalWrite(SCL_PIN, HIGH);
-  delayMicroseconds(10);
-  bool ack = !digitalRead(SDA_PIN);
-  digitalWrite(SCL_PIN, LOW);
-  return ack;
-}
-
-bool i2c_write_byte(uint8_t byte) {
-  for (int i = 7; i >= 0; i--) {
-    i2c_write_bit((byte >> i) & 1);
-  }
+void scan_ICM42605_registers() {
+  Serial.println("開始掃描ICM42605的寄存器：");
   
-  return i2c_write_bit(1); // 讀取ACK
-}
+  for (uint8_t regAddr = 0x00; regAddr <= 0x7F; regAddr++) {
+    uint8_t regValue = i2c_read(ICM42605_ADDR, regAddr);
 
-uint8_t i2c_read_byte(bool ack = true) {
-  uint8_t byte = 0;
-  pinMode(SDA_PIN, INPUT);
-  for (int i = 7; i >= 0; i--) {
-    digitalWrite(SCL_PIN, HIGH);
-    delayMicroseconds(10);
-    byte |= digitalRead(SDA_PIN) << i;
-    digitalWrite(SCL_PIN, LOW);
-    delayMicroseconds(10);
+    Serial.print("寄存器0x");
+    if (regAddr < 16) Serial.print("0");  // 確保格式正確
+    Serial.print(regAddr, HEX);
+    Serial.print(": 0x");
+    if (regValue < 16) Serial.print("0");  // 確保格式正確
+    Serial.println(regValue, HEX);
+    delay(10);  // 稍微延遲以確保串口不會被淹沒
   }
-  pinMode(SDA_PIN, OUTPUT);
-  i2c_write_bit(!ack); 
-  return byte;
+
+  Serial.println("掃描完畢！");
 }
 
-void i2c_write(uint8_t address, uint8_t reg, uint8_t data) {
-  i2c_start();
-  i2c_write_byte(address << 1);
-  i2c_write_byte(reg);
-  i2c_write_byte(data);
-  i2c_stop();
-}
+bool initialize_ICM42605() {
+  // 確認WHO_AM_I
+  uint8_t who_am_i = i2c_read(ICM42605_ADDR, 0x75);
+  if (who_am_i != 0x42) {
+    return false;
+  }
 
-uint8_t i2c_read(uint8_t address, uint8_t reg) {
-  i2c_start();
-  i2c_write_byte(address << 1);
-  i2c_write_byte(reg);
-  i2c_start(); 
-  i2c_write_byte((address << 1) | 1); 
-  uint8_t data = i2c_read_byte(false); 
-  i2c_stop();
-  return data;
+  // 重設裝置
+  i2c_write(ICM42605_ADDR, 0x80, 0x01); // PWR_MGMT0 寄存器: 重設
+  delay(50); // 等待重設完成
+
+  // 設定電源和時鐘
+  i2c_write(ICM42605_ADDR, 0x80, 0x00); // PWR_MGMT0 寄存器: 設定模式為正常
+
+  // 設定陀螺儀和加速度計的範圍、數據速率等，這裡只是一個基本示例
+  // 實際應用中可能需要其他設定
+  i2c_write(ICM42605_ADDR, 0x36, 0x03); // GYRO_CONFIG0: 設定為2000 dps
+  i2c_write(ICM42605_ADDR, 0x37, 0x03); // ACCEL_CONFIG0: 設定為16g
+
+  return true;
 }
 
 void setup() {
@@ -80,12 +53,18 @@ void setup() {
 
   Serial.begin(115200);
   Serial.println("I2C Scanner");
+  
+  // 確保ICM42605初始化正確
+  //if (!initialize_ICM42605()) {
+  //  Serial.println("ICM42605初始化失敗！");
+  //  while (1);
+  //}
+   //scan_ICM42605_registers();
 }
 
 void loop() {
   byte error, address;
   int nDevices;
-
   Serial.println("掃描中...");
 
   nDevices = 0;
