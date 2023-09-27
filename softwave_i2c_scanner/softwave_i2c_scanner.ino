@@ -28,6 +28,7 @@ bool initialize_ICM42605() {
   if (who_am_i != 0x42) {
     return false;
   }
+    delay(50); // 等待重設完成
 
   // 重設裝置
   i2c_write(ICM42605_ADDR, 0x80, 0x01); // PWR_MGMT0 寄存器: 重設
@@ -35,10 +36,13 @@ bool initialize_ICM42605() {
 
   // 設定電源和時鐘
   i2c_write(ICM42605_ADDR, 0x80, 0x00); // PWR_MGMT0 寄存器: 設定模式為正常
+  delay(50); // 等待重設完成
 
   // 設定陀螺儀和加速度計的範圍、數據速率等，這裡只是一個基本示例
   // 實際應用中可能需要其他設定
   i2c_write(ICM42605_ADDR, 0x36, 0x03); // GYRO_CONFIG0: 設定為2000 dps
+    delay(50); // 等待重設完成
+
   i2c_write(ICM42605_ADDR, 0x37, 0x03); // ACCEL_CONFIG0: 設定為16g
 
   return true;
@@ -54,11 +58,10 @@ void setup() {
   Serial.begin(115200);
   Serial.println("I2C Scanner");
   
-  // 確保ICM42605初始化正確
-  //if (!initialize_ICM42605()) {
-  //  Serial.println("ICM42605初始化失敗！");
-  //  while (1);
-  //}
+  if (!initialize_ICM42605()) {
+    Serial.println("ICM42605初始化失敗！");
+    while (1);
+  }
    //scan_ICM42605_registers();
 }
 
