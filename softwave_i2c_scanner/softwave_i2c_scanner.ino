@@ -1,8 +1,11 @@
 #include <Arduino.h>
+
+
+
 #define ICM42605_ADDR 0x68
-#define DELAY_TIME 100
 #define SDA_PIN 9
 #define SCL_PIN 10
+#define DELAY_TIME 100
 
 void scan_ICM42605_registers() {
   Serial.println("開始掃描ICM42605的寄存器：");
@@ -28,7 +31,7 @@ bool initialize_ICM42605() {
   if (who_am_i != 0x42) {
     return false;
   }
-    delay(50); // 等待重設完成
+  delay(50); // 等待重設完成
 
   // 重設裝置
   i2c_write(ICM42605_ADDR, 0x80, 0x01); // PWR_MGMT0 寄存器: 重設
@@ -62,7 +65,7 @@ void setup() {
     Serial.println("ICM42605初始化失敗！");
     while (1);
   }
-   //scan_ICM42605_registers();
+   scan_ICM42605_registers();
 }
 
 void loop() {

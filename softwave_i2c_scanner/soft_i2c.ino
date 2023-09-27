@@ -1,4 +1,5 @@
 
+
 void i2c_start() {
   digitalWrite(SDA_PIN, HIGH);
   digitalWrite(SCL_PIN, HIGH);
@@ -14,14 +15,12 @@ void i2c_stop() {
   digitalWrite(SDA_PIN, HIGH);
 }
 
-bool i2c_write_bit(bool bit) {
+void i2c_write_bit(bool bit) {
   digitalWrite(SDA_PIN, bit);
   delayMicroseconds(DELAY_TIME);
   digitalWrite(SCL_PIN, HIGH);
   delayMicroseconds(DELAY_TIME);
-  bool ack = !digitalRead(SDA_PIN);
   digitalWrite(SCL_PIN, LOW);
-  return ack;
 }
 
 bool i2c_write_byte(uint8_t byte) {
@@ -29,23 +28,37 @@ bool i2c_write_byte(uint8_t byte) {
     i2c_write_bit((byte >> i) & 1);
   }
   
-  return i2c_write_bit(1); // 讀取ACK
+  // 讀取ACK
+  pinMode(SDA_PIN, INPUT);  // 設置SDA為輸入模式來讀取acknowledge位
+  digitalWrite(SCL_PIN, HIGH);
+  delayMicroseconds(DELAY_TIME);
+  bool ack = !digitalRead(SDA_PIN);  // 如果SDA是低，那麼ack為true
+  digitalWrite(SCL_PIN, LOW);
+  pinMode(SDA_PIN, OUTPUT);  // 設回輸出模式以進行後續傳輸
+  delayMicroseconds(DELAY_TIME);
+  
+  return ack;
 }
+
 
 uint8_t i2c_read_byte(bool ack = true) {
   uint8_t byte = 0;
+
   pinMode(SDA_PIN, INPUT);
+  digitalWrite(SCL_PIN, LOW);  // 確保開始時SCL是LOW
+
   for (int i = 7; i >= 0; i--) {
-    Serial.println(i);
     digitalWrite(SCL_PIN, HIGH);
     delayMicroseconds(DELAY_TIME);
     byte |= digitalRead(SDA_PIN) << i;
     digitalWrite(SCL_PIN, LOW);
     delayMicroseconds(DELAY_TIME);
   }
+  
   pinMode(SDA_PIN, OUTPUT);
-  i2c_write_bit(!ack); 
-  Serial.println(byte,BIN);
+  i2c_write_bit(!ack);  // 發送ACK或NACK
+
+  Serial.println(byte);
   return byte;
 }
 
