@@ -4,7 +4,7 @@
 
 #define SDA_PIN 9
 #define SCL_PIN 10
-#define DELAY_TIME 100
+#define DELAY_TIME 10
 //ICM42605
 #define ICM42605_ADDR 0x68
 ICM42605 icm; // 宣告ICM42605物件
@@ -120,5 +120,5 @@ void loop() {
   Serial.print("Gyro Z: "); Serial.println(gz);
   Serial.println("----------------------------");
 
-  delay(1000);  // 延遲1秒
+  delay(10);  // 延遲1秒
 }
