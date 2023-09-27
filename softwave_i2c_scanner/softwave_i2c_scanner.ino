@@ -1,11 +1,13 @@
 #include <Arduino.h>
 
+#include "icm42605.h"
 
-
-#define ICM42605_ADDR 0x68
 #define SDA_PIN 9
 #define SCL_PIN 10
 #define DELAY_TIME 100
+//ICM42605
+#define ICM42605_ADDR 0x68
+ICM42605 icm; // 宣告ICM42605物件
 
 void scan_ICM42605_registers() {
   Serial.println("開始掃描ICM42605的寄存器：");
@@ -24,52 +26,36 @@ void scan_ICM42605_registers() {
 
   Serial.println("掃描完畢！");
 }
-
 bool initialize_ICM42605() {
-  // 確認WHO_AM_I
+  // 確認 WHO_AM_I
   uint8_t who_am_i = i2c_read(ICM42605_ADDR, 0x75);
   if (who_am_i != 0x42) {
     return false;
   }
-  delay(50); // 等待重設完成
+   // 初始化ICM42605
+  icm.init(AFS_2G, GFS_500DPS, 0x01, 0x01);
 
-  // 重設裝置
-  i2c_write(ICM42605_ADDR, 0x80, 0x01); // PWR_MGMT0 寄存器: 重設
-  delay(50); // 等待重設完成
+  // 計算零偏值
+  float accelBias[3] = {0, 0, 0};
+  float gyroBias[3] = {0, 0, 0};
+  icm.offsetBias(accelBias, gyroBias);
+  
+  Serial.println("Accelerometer Offset:");
+  Serial.print("X: "); Serial.println(accelBias[0]);
+  Serial.print("Y: "); Serial.println(accelBias[1]);
+  Serial.print("Z: "); Serial.println(accelBias[2]);
 
-  // 設定電源和時鐘
-  i2c_write(ICM42605_ADDR, 0x80, 0x00); // PWR_MGMT0 寄存器: 設定模式為正常
-  delay(50); // 等待重設完成
-
-  // 設定陀螺儀和加速度計的範圍、數據速率等，這裡只是一個基本示例
-  // 實際應用中可能需要其他設定
-  i2c_write(ICM42605_ADDR, 0x36, 0x03); // GYRO_CONFIG0: 設定為2000 dps
-    delay(50); // 等待重設完成
-
-  i2c_write(ICM42605_ADDR, 0x37, 0x03); // ACCEL_CONFIG0: 設定為16g
+  Serial.println("Gyroscope Offset:");
+  Serial.print("X: "); Serial.println(gyroBias[0]);
+  Serial.print("Y: "); Serial.println(gyroBias[1]);
+  Serial.print("Z: "); Serial.println(gyroBias[2]);
 
   return true;
 }
 
-void setup() {
-  pinMode(SDA_PIN, OUTPUT);
-  pinMode(SCL_PIN, OUTPUT);
 
-  digitalWrite(SDA_PIN, HIGH);
-  digitalWrite(SCL_PIN, HIGH);
-
-  Serial.begin(115200);
-  Serial.println("I2C Scanner");
-  
-  if (!initialize_ICM42605()) {
-    Serial.println("ICM42605初始化失敗！");
-    while (1);
-  }
-   scan_ICM42605_registers();
-}
-
-void loop() {
-  byte error, address;
+void soft_i2c_scan(){
+    byte error, address;
   int nDevices;
   Serial.println("掃描中...");
 
@@ -95,4 +81,44 @@ void loop() {
   }
 
   delay(5000);
+  }
+void setup() {
+  pinMode(SDA_PIN, OUTPUT);
+  pinMode(SCL_PIN, OUTPUT);
+
+  digitalWrite(SDA_PIN, HIGH);
+  digitalWrite(SCL_PIN, HIGH);
+
+  Serial.begin(115200);
+  Serial.println("I2C Scanner");
+  
+  if (!initialize_ICM42605()) {
+    Serial.println("ICM42605初始化失敗！");
+    while (1);
+  }
+  // scan_ICM42605_registers();
+}
+
+void loop() {
+  int16_t data[7];
+  icm.readData(data);  // 讀取ICM42605的資料
+
+  float temperature = data[0];
+  float ax = data[1] * icm.getAres(AFS_2G);
+  float ay = data[2] * icm.getAres(AFS_2G);
+  float az = data[3] * icm.getAres(AFS_2G);
+  float gx = data[4] * icm.getGres(GFS_500DPS);
+  float gy = data[5] * icm.getGres(GFS_500DPS);
+  float gz = data[6] * icm.getGres(GFS_500DPS);
+
+  Serial.print("Temperature: "); Serial.println(temperature);
+  Serial.print("Accel X: "); Serial.println(ax);
+  Serial.print("Accel Y: "); Serial.println(ay);
+  Serial.print("Accel Z: "); Serial.println(az);
+  Serial.print("Gyro X: "); Serial.println(gx);
+  Serial.print("Gyro Y: "); Serial.println(gy);
+  Serial.print("Gyro Z: "); Serial.println(gz);
+  Serial.println("----------------------------");
+
+  delay(1000);  // 延遲1秒
 }

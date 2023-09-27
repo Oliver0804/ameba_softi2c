@@ -1,4 +1,11 @@
 
+#define ICM42605_ADDR 0x68
+#define ACCEL_XOUT_H   0x1F
+#define ACCEL_XOUT_L   0x20
+#define ACCEL_YOUT_H   0x21
+#define ACCEL_YOUT_L   0x22
+#define ACCEL_ZOUT_H   0x23
+#define ACCEL_ZOUT_L   0x24
 
 void i2c_start() {
   digitalWrite(SDA_PIN, HIGH);
@@ -58,7 +65,7 @@ uint8_t i2c_read_byte(bool ack = true) {
   pinMode(SDA_PIN, OUTPUT);
   i2c_write_bit(!ack);  // 發送ACK或NACK
 
-  Serial.println(byte);
+  //Serial.println(byte);
   return byte;
 }
 
